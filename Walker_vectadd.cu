@@ -38,7 +38,7 @@ int main(){
 
     add_matrix_cpu(A, B, C_cpu, N);
 
-    auto ent_cpu = chrono::high_resolution_clock::now();
+    auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
     cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
 
@@ -64,10 +64,10 @@ int main(){
     add_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, N);
 
     cudaEventRecord(stop_gpu);
-    cudaEventSynchronise(stop_gpu);
+    cudaEventSynchronize(stop_gpu);
 
     float milliseconds = 0;
-    cudaEventElapsedTimed(milliseconds, start_gpu, stop_gpu);
+    cudaEventElapsedTime(milliseconds, start_gpu, stop_gpu);
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
