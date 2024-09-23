@@ -1,30 +1,31 @@
 // This will be a program to do matrix addition using CUDA and on the CPU and it will compare the results.
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <iostream>
 #include <cuda_runtime.h>
+
+using namespace std;
 
 void init_matrix(int *A, int *B, int N);
 void add_matrix_cpu(int *A, int *B, int *C, int N);
 __global__ void add_matrix_gpu(int *A, int *B, int *C, int N);
 void compare_matrices(int *cpu_result, int *gpu_result, int N);
 
-void main(){
+int main(){
     int N, block_size;
 
     // Get Matrix size from user
-    printf("Enter size of the N x N matrix: ");
-    scanf("%d", &N);
+    cout << "Enter size of the N x N matrix: ";
+    cin >> N;
 
     // Get bloack size from user
-    printf("enter the block size for CUDA: ");
-    scanf("%d", &block_size);
+    cout << "enter the block size for CUDA: ";
+    cin << block_size;
 
     // Allocate memory for matrices
-    int *A = (int *)malloc(N * N * sizeof(int));
-    int *B = (int *)malloc(N * N * sizeof(int));
-    int *C_cpu = (int *)malloc(N * N * sizeof(int));
-    int *C_gpu = (int *)malloc(N * N * sizeof(int));
+    int *A = new int[N * N];
+    int *B = new int[N * N];
+    int *C_cpu = new int[N * N];
+    int *C_gpu = new int[N * N];
 
     init_matrix(A, B, N);
     add_matrix_cpu(A, B, C_cpu, N);
@@ -42,7 +43,7 @@ void main(){
 
     add_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, N);
 
-    cudaMemcpy(C_gpu, d_c, N * N * sizeof(int), cudeMemcpyDeviceToHost);
+    cudaMemcpy(C_gpu, d_C, N * N * sizeof(int), cudeMemcpyDeviceToHost);
 
     compare_matrices(C_cpu, C_gpu, N);
 
@@ -50,10 +51,10 @@ void main(){
     cudaFree(d_B);
     cudaFree(d_C);
 
-    free(A);
-    free(B);
-    free(C_cpu);
-    free(C_gpu);
+    delete(A);
+    delete(B);
+    delete(C_cpu);
+    delete(C_gpu);
     
     return 0;
 }
@@ -79,21 +80,21 @@ void add_matrix_cpu(int *A, int *B, int *C, int N){
 }
 
 __global__ void add_matrix_gpu(int *A, int *B, int *C, int N){
-    int col = blockIDx.x * blockDim.x + threadIdx.x;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int index = row * N + col;
 
     if( row < N && col < N){
-        c[index] = a[index] + b[index];
+        C[index] = A[index] + B[index];
     }
 }
 
 void compare_matrices(int *cpu_result, int *gpu_result, int N){
     for(int i = 0; i < N; i++){
         if(cpu_result[i] != gpu_result[i]){
-            printf("Mismatch at index %d! CPU: %d, GPU: %d\n", i, cpu_result[i], gpu_result[i]);
+            cout << "Mismatch at index " << i << "! CPU: " << cpu_result[i] << ", GPU: " << gpu_result[i] << endl;
             return;
         }
     }
-    printf("CPU and GPU results match!\n");
+    cout << "CPU and GPU results match!" << endl;
 }
