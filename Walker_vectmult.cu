@@ -114,10 +114,9 @@ void mult_matrix_cpu(int *A, int *B, int *C, int N){
     }
 }
 
-__global__ void add_matrix_gpu(int *A, int *B, int *C, int N){
+__global__ void mult_matrix_gpu(int *A, int *B, int *C, int N){
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int index = row * N + col;
 
     if( row < N && col < N){
         int P = 0;
