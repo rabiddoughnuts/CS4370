@@ -7,8 +7,8 @@
 using namespace std;
 
 void init_matrix(int *A, int *B, int N);
-void add_matrix_cpu(int *A, int *B, int *C, int N);
-__global__ void add_matrix_gpu(int *A, int *B, int *C, int N);
+void mult_matrix_cpu(int *A, int *B, int *C, int N);
+__global__ void mult_matrix_gpu(int *A, int *B, int *C, int N);
 void compare_matrices(int *cpu_result, int *gpu_result, int N);
 void print_matrix(int *matrix, int N, const char *name);
 
@@ -36,7 +36,7 @@ int main(){
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
-    add_matrix_cpu(A, B, C_cpu, N);
+    mult_matrix_cpu(A, B, C_cpu, N);
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
@@ -61,7 +61,7 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    add_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, N);
+    mult_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, N);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -100,11 +100,16 @@ void init_matrix(int *A, int *B, int N){
     }
 }
 
-void add_matrix_cpu(int *A, int *B, int *C, int N){
+void mult_matrix_cpu(int *A, int *B, int *C, int N){
     for(int i = 0; i < N; i++){
         for(int j = 0; j < N; j++){
-            int index = i * N + j;
-            C[index] = A[index] + B[index];
+            int sum = 0;
+            for(int k = 0; k < N; k++){
+                int m = A[i * N + k];
+                int n = B[k * N + j];
+                sum += m * n;
+            }
+            C[i * N + j] = sum;
         }
     }
 }
@@ -115,7 +120,11 @@ __global__ void add_matrix_gpu(int *A, int *B, int *C, int N){
     int index = row * N + col;
 
     if( row < N && col < N){
-        C[index] = A[index] + B[index];
+        int P = 0;
+        for(int k = 0; k < N; k++){
+            P += A[row * N + k] * B[k * N + col];
+        }
+        C[row * N + col] = P;
     }
 }
 
