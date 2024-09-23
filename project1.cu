@@ -35,7 +35,7 @@ int main(){
     cudaMalloc((void **)&d_B, N * N * sizeof(int));
     cudaMalloc((void **)&d_C, N * N * sizeof(int));
 
-    cudeMemcpy(d_A, A, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_A, A, N * N * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, B, N * N * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size, block_size);
@@ -43,7 +43,7 @@ int main(){
 
     add_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, N);
 
-    cudaMemcpy(C_gpu, d_C, N * N * sizeof(int), cudeMemcpyDeviceToHost);
+    cudaMemcpy(C_gpu, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
 
     compare_matrices(C_cpu, C_gpu, N);
 
