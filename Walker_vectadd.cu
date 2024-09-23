@@ -67,7 +67,7 @@ int main(){
     cudaEventSynchronize(stop_gpu);
 
     float milliseconds = 0;
-    cudaEventElapsedTime(milliseconds, start_gpu, stop_gpu);
+    cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
