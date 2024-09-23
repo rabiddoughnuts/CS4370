@@ -19,7 +19,7 @@ int main(){
 
     // Get bloack size from user
     cout << "enter the block size for CUDA: ";
-    cin << block_size;
+    cin >> block_size;
 
     // Allocate memory for matrices
     int *A = new int[N * N];
