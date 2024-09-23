@@ -1,4 +1,9 @@
-// This will be a program to do matrix addition using CUDA and on the CPU and it will compare the results.
+// CS4370
+// Parallel Programming Many-Core GPUs
+// Brandon Walker
+// Meilin Liu
+// 23-Sep-2024
+// Vector Multiplication
 
 #include <iostream>
 #include <cuda_runtime.h>
