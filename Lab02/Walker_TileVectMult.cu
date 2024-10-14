@@ -13,7 +13,7 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int Width);
 void mult_matrix_cpu(int* A, int* B, int* C, int Width);
-__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width);
+__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width, int TILE_WIDTH);
 void compare_matrices(int *cpu_result, int *gpu_result, int Width);
 void print_matrix(int *matrix, int Width, const char *name);
 
@@ -64,7 +64,7 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    mult_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, Width);
+    mult_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, Width, block_size);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -117,8 +117,8 @@ void mult_matrix_cpu(int *A, int *B, int *C, int Width){
     }
 }
 
-__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
-    int TILE_WIDTH = blockDim.x;
+__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width, int TILE_WIDTH){
+    // int TILE_WIDTH = blockDim.x;
     __shared__ float ds_A[TILE_WIDTH][TILE_WIDTH];
     __shared__ float ds_B[TILE_WIDTH][TILE_WIDTH];
 
