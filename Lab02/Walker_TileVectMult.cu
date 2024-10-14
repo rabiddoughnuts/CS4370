@@ -13,7 +13,7 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int Width);
 void mult_matrix_cpu(int* A, int* B, int* C, int Width);
-__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width, int TILE_WIDTH);
+__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width);
 void compare_matrices(int *cpu_result, int *gpu_result, int Width);
 void print_matrix(int *matrix, int Width, const char *name);
 
@@ -64,7 +64,8 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    mult_matrix_gpu<<<dimGrid, dimBlock>>>(d_A, d_B, d_C, Width, block_size);
+    size_t shared_mem_size = 2 * block_size * block_size * sizeof(float);
+    mult_matrix_gpu<<<dimGrid, dimBlock, shared_mem_size>>>(d_A, d_B, d_C, Width);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -117,10 +118,10 @@ void mult_matrix_cpu(int *A, int *B, int *C, int Width){
     }
 }
 
-__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width, int TILE_WIDTH){
-    // int TILE_WIDTH = blockDim.x;
-    __shared__ float ds_A[TILE_WIDTH][TILE_WIDTH];
-    __shared__ float ds_B[TILE_WIDTH][TILE_WIDTH];
+__global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
+    extern __shared__ float shared_mem[];
+    float* ds_A = shared_mem;
+    float* ds_B = shared_mem + blockDim.x * blockDim.y;
 
     int bx = blockIdx.x;
     int by = blockIdx.y;
@@ -133,11 +134,11 @@ __global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width, int TIL
     if( row < Width && col < Width){
         int P = 0;
         for(int k = 0; k < Width/TILE_WIDTH; k++){
-            ds_A[ty][tx] = d_A[row * Width + k * TILE_WIDTH + tx];
-            ds_B[ty][tx] = d_B[col + (k * TILE_WIDTH + ty) * Width];
+            ds_A[ty * blockDim.x + tx] = d_A[row * Width + k * TILE_WIDTH + tx];
+            ds_B[ty * blockDim.x + tx] = d_B[col + (k * TILE_WIDTH + ty) * Width];
             __syncthreads();
             for(int m = 0; m < TILE_WIDTH; m++){
-                P += ds_A[ty][m] * ds_B[m][tx];
+                P += ds_A[ty * blockDim.x + m] * ds_B[m * blockDim.x + tx];
             }
             __syncthreads();
         }
