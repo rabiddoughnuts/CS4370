@@ -128,16 +128,16 @@ __global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    int row = by * TILE_WIDTH + ty;
-    int col = bx * TILE_WIDTH + tx;
+    int row = by * blockDim.y + ty;
+    int col = bx * blockDim.x + tx;
 
     if( row < Width && col < Width){
         int P = 0;
-        for(int k = 0; k < Width/TILE_WIDTH; k++){
-            ds_A[ty * blockDim.x + tx] = d_A[row * Width + k * TILE_WIDTH + tx];
-            ds_B[ty * blockDim.x + tx] = d_B[col + (k * TILE_WIDTH + ty) * Width];
+        for(int k = 0; k < Width/blockDim.x; k++){
+            ds_A[ty * blockDim.x + tx] = d_A[row * Width + k * blockDim.x + tx];
+            ds_B[ty * blockDim.x + tx] = d_B[col + (k * blockDim.x + ty) * Width];
             __syncthreads();
-            for(int m = 0; m < TILE_WIDTH; m++){
+            for(int m = 0; m < blockDim.x; m++){
                 P += ds_A[ty * blockDim.x + m] * ds_B[m * blockDim.x + tx];
             }
             __syncthreads();
