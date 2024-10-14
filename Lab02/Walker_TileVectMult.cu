@@ -32,7 +32,7 @@ int main(){
     int *A = new int[Width * Width];
     int *B = new int[Width * Width];
     int *C_cpu = new int[Width * Width];
-    int *C_gpu = new int[[Width * Width];
+    int *C_gpu = new int[Width * Width];
 
     init_matrix(A, B, Width);
 
@@ -45,8 +45,12 @@ int main(){
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
-    cout << "CPU time: " << duration_cp
-    cout << name << ":" << endl;
+    cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
+
+    int *d_A, *d_B, *d_C;
+    cudaMalloc(&d_A, Width * Width * sizeof(int));
+    cudaMalloc(&d_B, Width * Width * sizeof(int));
+    cudaMalloc(&d_C, Width * Width * sizeof(int));
 
     cudaMemcpy(d_A, A, Width * Width * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, B, Width * Width * sizeof(int), cudaMemcpyHostToDevice);
@@ -70,20 +74,20 @@ int main(){
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
-    cudaMemcpy(C_gpu, d_C, Width *  * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(C_gpu, d_C, Width * Width * sizeof(int), cudaMemcpyDeviceToHost);
 
-    print_matrix(C_gpu, N, "Matrix C (GPU)");
+    print_matrix(C_gpu, Width, "Matrix C (GPU)");
 
-    compare_matrices(C_cpu, C_gpu, N);
+    compare_matrices(C_cpu, C_gpu, Width);
 
     cudaFree(d_A);
     cudaFree(d_B);
     cudaFree(d_C);
 
-    delete(A);
-    delete(B);
-    delete(C_cpu);
-    delete(C_gpu);
+    delete[] A;
+    delete[] B;
+    delete[] C_cpu;
+    delete[] C_gpu;
     
     return 0;
 }
