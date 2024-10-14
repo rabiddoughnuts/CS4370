@@ -119,9 +119,9 @@ void mult_matrix_cpu(int *A, int *B, int *C, int Width){
 }
 
 __global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
-    extern __shared__ float shared_mem[];
-    float* ds_A = shared_mem;
-    float* ds_B = shared_mem + blockDim.x * blockDim.y;
+    extern __shared__ int shared_mem[];
+    int* ds_A = shared_mem;
+    int* ds_B = shared_mem + blockDim.x * blockDim.y;
 
     int bx = blockIdx.x;
     int by = blockIdx.y;
@@ -131,17 +131,30 @@ __global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
     int row = by * blockDim.y + ty;
     int col = bx * blockDim.x + tx;
 
-    if( row < Width && col < Width){
-        int P = 0;
-        for(int k = 0; k < Width/blockDim.x; k++){
+    int P = 0;
+
+    for (int k = 0; k < (Width + blockDim.x - 1) / blockDim.x; ++k) {
+        if (row < Width && k * blockDim.x + tx < Width) {
             ds_A[ty * blockDim.x + tx] = d_A[row * Width + k * blockDim.x + tx];
-            ds_B[ty * blockDim.x + tx] = d_B[col + (k * blockDim.x + ty) * Width];
-            __syncthreads();
-            for(int m = 0; m < blockDim.x; m++){
-                P += ds_A[ty * blockDim.x + m] * ds_B[m * blockDim.x + tx];
-            }
-            __syncthreads();
+        } else {
+            ds_A[ty * blockDim.x + tx] = 0;
         }
+        if (col < Width && k * blockDim.x + ty < Width) {
+            ds_B[ty * blockDim.x + tx] = d_B[(k * blockDim.x + ty) * Width + col];
+        } else {
+            ds_B[ty * blockDim.x + tx] = 0;
+        }
+
+        __syncthreads();
+        
+        for (int n = 0; n < blockDim.x; ++n) {
+            P += ds_A[ty * blockDim.x + n] * ds_B[n * blockDim.x + tx];
+        }
+
+        __syncthreads();
+    }
+
+    if (row < Width && col < Width) {
         d_C[row * Width + col] = P;
     }
 }
