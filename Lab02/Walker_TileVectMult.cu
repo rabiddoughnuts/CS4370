@@ -72,7 +72,7 @@ int main(){
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
-    cout << "GPU time: " << milliseconds << " ms" << endl;B
+    cout << "GPU time: " << milliseconds << " ms" << endl;
 
     cudaMemcpy(C_gpu, d_C, Width * Width * sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -118,24 +118,25 @@ void mult_matrix_cpu(int *A, int *B, int *C, int Width){
 }
 
 __global__ void mult_matrix_gpu(int* d_A, int* d_B, int* d_C, int Width){
-    __shared__ float ds_A[blockDim.x][blockDim.x];
-    __shared__ float ds_B[blockDim.x][blockDim.x];
+    int TILE_WIDTH = blockDim.x;
+    __shared__ float ds_A[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float ds_B[TILE_WIDTH][TILE_WIDTH];
 
     int bx = blockIdx.x;
     int by = blockIdx.y;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    int row = by * blockDim.x + ty;
-    int col = bx * blockDim.x + tx;
+    int row = by * TILE_WIDTH + ty;
+    int col = bx * TILE_WIDTH + tx;
 
     if( row < Width && col < Width){
         int P = 0;
-        for(int k = 0; k < Width/blockDim.x; k++){
-            ds_A[ty][tx] = d_A[row * Width + k * blockDim.x + tx];
-            ds_B[ty][tx] = d_B[col + (k * blockDim.x + ty) * Width];
+        for(int k = 0; k < Width/TILE_WIDTH; k++){
+            ds_A[ty][tx] = d_A[row * Width + k * TILE_WIDTH + tx];
+            ds_B[ty][tx] = d_B[col + (k * TILE_WIDTH + ty) * Width];
             __syncthreads();
-            for(int m = 0; m < blockDim.x; m++){
+            for(int m = 0; m < TILE_WIDTH; m++){
                 P += ds_A[ty][m] * ds_B[m][tx];
             }
             __syncthreads();
