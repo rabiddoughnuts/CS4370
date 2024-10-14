@@ -148,8 +148,8 @@ void compare_matrices(int *cpu_result, int *gpu_result, int Width){
     for(int row = 0; row < Width; row++){
         for(int col = 0; col < Width; col++){
             int idx = row * Width + col;
-            if(cpu_result[i] != gpu_result[i]){
-                cout << "Mismatch at index " << i << "! CPU: " << cpu_result[i] << ", GPU: " << gpu_result[i] << endl;
+            if(cpu_result[idx] != gpu_result[idx]){
+                cout << "Mismatch at index (" << row << ", " << col << ")! CPU: " << cpu_result[idx] << ", GPU: " << gpu_result[idx] << endl;
                 return;
             }
         }
