@@ -97,12 +97,25 @@ void init_matrix(int *A, int *B, int Width){
     int init=1325;
     for(int row = 0; row < Width; row++){
         for(int col = 0; col < Width; col++){
+            init= 3125 * init % 6553;
+            A[row * Width + col] = (init - 1000) / 6553;
+            B[row * Width + col] = init % 251;
+        }
+    }
+}
+
+/**
+void init_matrix(int *A, int *B, int Width){
+    int init=1325;
+    for(int row = 0; row < Width; row++){
+        for(int col = 0; col < Width; col++){
             init= (3125 * init) % 65536;
             A[row * Width + col] = (init - 32768) / 6553;
             B[row * Width + col] = init % 1000;
         }
     }
 }
+**/
 
 void mult_matrix_cpu(int *A, int *B, int *C, int Width){
     for(int row = 0; row < Width; row++){
