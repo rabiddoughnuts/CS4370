@@ -3,7 +3,7 @@
 // Parallel Programming Many-Core GPUs
 // Meilin Liu
 // 4-Nov-2024
-// Sum Reduction
+// Parallel Prefix Sum
 
 #include <iostream>
 #include <cuda_runtime.h>
@@ -12,8 +12,8 @@
 using namespace std;
 
 void init_matrix(int *A, int *B, int N);
-void SumReduction(int* x, int N);
-__global__ void SumReductionKernel(int* x, int N);
+void ParPrefix(int* x, int N);
+__global__ void ParPrefixKernel(int* x, int N);
 void compare_matrices(int cpu_result, int gpu_result);
 void print_matrix(int *matrix, const char *name);
 
@@ -115,13 +115,13 @@ void init_matrix(int *A, int *B, int Width){
     }
 }
 
-void SumReduction(int* x, int N){
+void ParPrefix(int* x, int N){
     for(int i = 1; i < N; i++){
         x[0] += x[i];
     }
 }
 
-__global__ void SumReductionKernel(int* x, int Width){
+__global__ void ParPrefixKernel(int* x, int Width){
     extern __shared__ int sdata[];
 
     int threadID = threadIdx.x;
