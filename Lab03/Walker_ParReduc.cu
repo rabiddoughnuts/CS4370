@@ -48,6 +48,7 @@ int main(){
     int *d_B;
     cudaMalloc(&d_B, Width * sizeof(int));
 
+    cudaEvent_t transfer_start, transfer_stop;
     cudaEventCreate(&transfer_start);
     cudaEventCreate(&transfer_stop);
 
