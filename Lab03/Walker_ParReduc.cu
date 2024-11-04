@@ -48,6 +48,10 @@ int main(){
     int *d_B;
     cudaMalloc(&d_B, Width * sizeof(int));
 
+    cudaEventCreate(&transfer_start);
+    cudaEventCreate(&transfer_stop);
+
+    cudaEventRecord(transfer_start);
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
@@ -74,12 +78,19 @@ int main(){
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
+    cudaMemcpy(B, d_B, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaEventRecord(transfer_stop);
+    cudaEventSynchronize(transfer_stop);
+
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
-    cudaMemcpy(B, d_B, sizeof(int), cudaMemcpyDeviceToHost);
+    float mem_transfer = 0;
+    cudaEventElapsedTime(&mem_transfer, transfer_start, transfer_stop);
+
+    cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
 
     cout << A[0] << " : Matrix A (CPU)" << endl;
     cout << B[0] << " : Matrix B (GPU)" << endl;
