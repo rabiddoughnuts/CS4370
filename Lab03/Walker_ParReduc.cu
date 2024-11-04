@@ -2,8 +2,8 @@
 // CS4370
 // Parallel Programming Many-Core GPUs
 // Meilin Liu
-// 23-Oct-2024
-// Tiled Matrix Multiplication
+// 4-Nov-2024
+// Sum Reduction
 
 #include <iostream>
 #include <cuda_runtime.h>
@@ -21,7 +21,7 @@ int main(){
     int Width, block_size;
 
     // Get Matrix size from user
-    cout << "Enter size of the Width x Width matrix: ";
+    cout << "Enter size of the Array: ";
     cin >> Width;
 
     // Get bloack size from user
@@ -29,8 +29,8 @@ int main(){
     cin >> block_size;
 
     // Allocate memory for matrices
-    int *A = new int[Width * Width];
-    int *B = new int[Width * Width];
+    int *A = new int[Width];
+    int *B = new int[Width];
 
     init_matrix(A, B, Width);
 
@@ -46,12 +46,12 @@ int main(){
     cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
 
     int *d_B;
-    cudaMalloc(&d_B, Width * Width * sizeof(int));
+    cudaMalloc(&d_B, Width * sizeof(int));
 
-    cudaMemcpy(d_B, B, Width * Width * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 dimBlock(block_size, block_size);
-    dim3 dimGrid((Width + block_size - 1) / block_size, (Width + block_size - 1) / block_size);
+    dim3 dimBlock(block_size);
+    dim3 dimGrid((Width + block_size - 1) / block_size);
 
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
@@ -59,8 +59,17 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    size_t shared_mem_size = 2 * block_size * block_size * sizeof(float);
-    SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
+    size_t shared_mem_size = block_size * sizeof(int);
+
+    while(dimGrid > 1){
+        SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
+        cudaDeviceSynchronize();
+        Width = dimGrid;
+        dimGrid = (Width + dimBlock - 1) / dimBlock;
+    }
+
+    SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
+    
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -70,7 +79,7 @@ int main(){
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
-    cudaMemcpy(B, d_B, Width * Width * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
 
     print_matrix(A, Width, "Matrix A (CPU)");
     print_matrix(B, Width, "Matrix B (GPU)");
@@ -100,15 +109,24 @@ void SumReduction(int* x, int N){
     }
 }
 
-__global__ void SumReductionKernel(int* x, int N){
+__global__ void SumReductionKernel(int* x, int Width){
+    extern __shared__ int sdata[];
+
+    int threadID = threadIdx.x;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int half = N / 2;
-    while(half > 0){
-        if(i < half){
-            x[i] += x[i + half];
+
+    sdata[threadID] = (i < Width) ? x[i] : 0;
+    __syncthreads();
+
+    for(int half = blockDim.x / 2; half > 0; half /=2){
+        if(threadID < half){
+            sdata[threadID] += sdata[threadID + half];
         }
         __syncthreads();
-        half /= 2;
+    }
+
+    if(threadID == 0){
+        x[blockIdx.x] = sdata[0];
     }
 }
 
