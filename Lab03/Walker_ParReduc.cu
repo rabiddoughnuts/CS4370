@@ -24,7 +24,7 @@ int main(){
     cout << "Enter size of the Array: ";
     cin >> Width;
 
-    // Get bloack size from user
+    // Get block size from user
     cout << "Enter the block size for CUDA: ";
     cin >> block_size;
 
@@ -61,11 +61,11 @@ int main(){
 
     size_t shared_mem_size = block_size * sizeof(int);
 
-    while(dimGrid > 1){
+    while(dimGrid.x > 1){
         SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
         cudaDeviceSynchronize();
-        Width = dimGrid;
-        dimGrid = (Width + dimBlock - 1) / dimBlock;
+        Width = dimGrid.x;
+        dimGrid.x = (Width + dimBlock - 1) / dimBlock;
     }
 
     SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
@@ -79,12 +79,12 @@ int main(){
 
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
-    cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(B, d_B, sizeof(int), cudaMemcpyDeviceToHost);
 
-    print_matrix(A, Width, "Matrix A (CPU)");
-    print_matrix(B, Width, "Matrix B (GPU)");
+    cout << A[0] << " : Matrix A (CPU)" << endl;
+    cout << B[0] << " : Matrix B (GPU)" << endl;
 
-    compare_matrices(A, B, Width);
+    compare_matrices(A[0], B[0]);
 
     cudaFree(d_B);
 
@@ -130,23 +130,17 @@ __global__ void SumReductionKernel(int* x, int Width){
     }
 }
 
-void compare_matrices(int *cpu_result, int *gpu_result, int N){
-    for(int i = 0; i < N; i++){
-        if(cpu_result[i] != gpu_result[i]){
-            cout << "Matrices are not equal" << endl;
-            return;
-        }
+void compare_matrices(int *cpu_result, int *gpu_result){
+    if(cpu_result != gpu_result){
+        cout << "Sums are not equal" << endl;
     }
-    cout << "Matrices are equal" << endl;
+    cout << "Sums are equal" << endl;
 }
 
 void print_matrix(int *matrix, int N, const char *name){
     cout << name << ":" << endl;
     for(int i = 0; i < N; i++){
-        cout << matrix[i] << " ";
-        if((i + 1) % 10 == 0){
-            cout << endl;
-        }
+        cout << matrix[i] << ", ";
     }
     cout << endl;
 }
