@@ -14,7 +14,7 @@ using namespace std;
 void init_matrix(int *A, int *B, int N);
 void SumReduction(int* x, int N);
 __global__ void SumReductionKernel(int* x, int N);
-void compare_matrices(int *cpu_result, int *gpu_result, int N);
+void compare_matrices(int cpu_result, int gpu_result, int N);
 void print_matrix(int *matrix, int N, const char *name);
 
 int main(){
@@ -94,9 +94,9 @@ int main(){
     return 0;
 }
 
-void init_matrix(int *A, int *B, int N){
+void init_matrix(int *A, int *B, int Width){
     int init = 1325;
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < Width; i++){
         init = 3125 * init % 6553;
         A[i] = (init - 1000) % 97;
         B[i] = (init - 1000) % 97;
@@ -137,9 +137,9 @@ void compare_matrices(int cpu_result, int gpu_result){
     cout << "Sums are equal" << endl;
 }
 
-void print_matrix(int *matrix, int N, const char *name){
+void print_matrix(int *matrix, int Width, const char *name){
     cout << name << ":" << endl;
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < Width; i++){
         cout << matrix[i] << ", ";
     }
     cout << endl;
