@@ -39,7 +39,7 @@ int main(){
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
-    mult_matrix_cpu(A, B, C_cpu, Width);
+    SumReduction(A, Width);
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
@@ -98,8 +98,6 @@ void SumReduction(int* x, int N){
     for(int i = 1; i < N; i++){
         x[0] += x[i];
     }
-    int overallSum = x[0];
-    return overallSum;
 }
 
 __global__ void SumReductionKernel(int* x, int N){
