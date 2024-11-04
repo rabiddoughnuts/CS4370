@@ -130,7 +130,7 @@ __global__ void SumReductionKernel(int* x, int Width){
     }
 }
 
-void compare_matrices(int *cpu_result, int *gpu_result){
+void compare_matrices(int cpu_result, int gpu_result){
     if(cpu_result != gpu_result){
         cout << "Sums are not equal" << endl;
     }
