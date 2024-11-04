@@ -65,7 +65,7 @@ int main(){
         SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
         cudaDeviceSynchronize();
         Width = dimGrid.x;
-        dimGrid.x = (Width + dimBlock.x - 1) / dimBlock;
+        dimGrid.x = (Width + dimBlock.x - 1) / dimBlock.x;
     }
 
     SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
