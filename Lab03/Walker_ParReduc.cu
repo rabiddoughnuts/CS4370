@@ -14,7 +14,7 @@ using namespace std;
 void init_matrix(int *A, int *B, int N);
 void SumReduction(int* x, int N);
 __global__ void SumReductionKernel(int* x, int N);
-void compare_matrices(int cpu_result, int gpu_result, int N);
+void compare_matrices(int cpu_result, int gpu_result);
 void print_matrix(int *matrix, int N, const char *name);
 
 int main(){
@@ -65,7 +65,7 @@ int main(){
         SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
         cudaDeviceSynchronize();
         Width = dimGrid.x;
-        dimGrid.x = (Width + dimBlock - 1) / dimBlock;
+        dimGrid.x = (Width + dimBlock.x - 1) / dimBlock;
     }
 
     SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
