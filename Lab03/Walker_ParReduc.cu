@@ -15,7 +15,7 @@ void init_matrix(int *A, int *B, int N);
 void SumReduction(int* x, int N);
 __global__ void SumReductionKernel(int* x, int N);
 void compare_matrices(int cpu_result, int gpu_result);
-void print_matrix(int *matrix, int N, const char *name);
+void print_matrix(int *matrix, const char *name);
 
 int main(){
     int Width, block_size;
@@ -34,8 +34,8 @@ int main(){
 
     init_matrix(A, B, Width);
 
-    print_matrix(A, Width, "Matrix A");
-    print_matrix(B, Width, "Matrix B");
+    print_matrix(A, "Matrix A");
+    print_matrix(B, "Matrix B");
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
@@ -137,9 +137,9 @@ void compare_matrices(int cpu_result, int gpu_result){
     cout << "Sums are equal" << endl;
 }
 
-void print_matrix(int *matrix, int Width, const char *name){
+void print_matrix(int *matrix, const char *name){
     cout << name << ":" << endl;
-    for(int i = 0; i < Width; i++){
+    for(int i = 0; i < 25; i++){
         cout << matrix[i] << ", ";
     }
     cout << endl;
