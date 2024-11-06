@@ -11,9 +11,9 @@
 
 using namespace std;
 
-void init_matrix(int *A, int *B, int N);
-void ParPrefix(int* x, int N);
-__global__ void ParPrefixKernel(int* x, int N);
+void init_matrix(int *A, int *B, int Width);
+void ParPrefix(int* x, int* y, int Width);
+__global__ void ParPrefixKernel(int* x,int* y, int Width);
 void compare_matrices(int cpu_result, int gpu_result);
 void print_matrix(int *matrix, const char *name);
 
@@ -115,9 +115,10 @@ void init_matrix(int *A, int *B, int Width){
     }
 }
 
-void ParPrefix(int* x, int N){
-    for(int i = 1; i < N; i++){
-        x[0] += x[i];
+void ParPrefix(int* x, int* y, int Width){
+    x[0] = y[0];
+    for(int i = 1; i < Width; i++){
+        x[i] = x[i-1] + y[i];
     }
 }
 
