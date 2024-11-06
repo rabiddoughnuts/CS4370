@@ -135,12 +135,12 @@ void ParPrefix(int* x, int* y, int Width){
 
 // Parallel Prefix Sum Kernel for CUDA
 __global__ void ParPrefixKernel(int* x,int* y, int Width){
-    __shared__ int scan_array[2*BLOCK_SIZE];
+    __shared__ int scan_array[2 * blockDim.x];
 
     unsigned int threadID = threadIdx.x;
     unsigned int start = 2 * blockIdx.x * blockDim.x;
     scan_array[threadID] = x[start + threadID];
-    scan_array[blockDim + t] = x[start + blockDim.x + threadID];
+    scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
 
     // scan_array[threadID] = (i < Width) ? x[i] : 0;
     __syncthreads();
@@ -149,9 +149,9 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
 
     int stride = 1;
     int index;
-    while(stride <= BLOCK_SIZE){
+    while(stride <= blockDim.x){
         index = (threadIdx.x + 1) * stride * 2 - 1;
-        if(index < 2 * BLOCK_SIZE){
+        if(index < 2 * blockDim.x){
             scan_array[index] += scan_array[index - stride];
         }
         stride = stride * 2;
@@ -161,10 +161,10 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
 
     //Post Scan step pseudo code
 
-    stride = BLOCK_SIZE/2;
+    stride = blockDim.x / 2;
     while(stride > 0){
         index = (threadIdx.x + 1) * stride * 2 - 1;
-        if(index + stride < 2 * BLOCK_SIZE){
+        if(index + stride < 2 * blockDim.x){
             scan_array[index + stride] += scan_array[index];
         }
         stride = stride / 2;
@@ -174,7 +174,7 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
     __synchthreads();
 
     x[start + threadID] = scan_array[threadID];
-    x[start + blockDim.x + threadID] = scan_array[blockDim + threadID];
+    x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
 }
 
 void compare_matrices(int cpu_result, int gpu_result){
