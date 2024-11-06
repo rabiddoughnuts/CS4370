@@ -29,8 +29,10 @@ int main(){
     cin >> block_size;
 
     // Allocate memory for matrices
-    int *A = new int[Width];
-    int *B = new int[Width];
+    int* A = new int[Width];
+    int* B = new int[Width];
+    int* cpuSum = new int[Width];
+    int* gpuSum = new int[Width];
 
     init_matrix(A, B, Width);
 
@@ -39,14 +41,16 @@ int main(){
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
-    SumReduction(A, Width);
+    ParPrefix(A, cpuSum, Width);
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
     cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
 
-    int *d_B;
+    int* d_B;
+    int* d_Sum;
     cudaMalloc(&d_B, Width * sizeof(int));
+    cudaMalloc(&d_Sum, Width * sizeof(int));
 
     cudaEvent_t transfer_start, transfer_stop;
     cudaEventCreate(&transfer_start);
@@ -54,6 +58,7 @@ int main(){
 
     cudaEventRecord(transfer_start);
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpuHostToDevice);
 
     dim3 dimBlock(block_size);
     dim3 dimGrid((Width + block_size - 1) / block_size);
@@ -66,20 +71,23 @@ int main(){
 
     size_t shared_mem_size = block_size * sizeof(int);
 
-    while(dimGrid.x > 1){
-        SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
-        cudaDeviceSynchronize();
-        Width = dimGrid.x;
-        dimGrid.x = (Width + dimBlock.x - 1) / dimBlock.x;
-    }
+    ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
 
-    SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
-    
+    // while(dimGrid.x > 1){
+    //     SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
+    //     cudaDeviceSynchronize();
+    //     Width = dimGrid.x;
+    //     dimGrid.x = (Width + dimBlock.x - 1) / dimBlock.x;
+    // }
+
+    // SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
-    cudaMemcpy(B, d_B, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(gpuSum, d_Sum, Width * sizeof(int), cudaMemcpyDeviceToHost);
+
     cudaEventRecord(transfer_stop);
     cudaEventSynchronize(transfer_stop);
 
@@ -99,9 +107,12 @@ int main(){
     compare_matrices(A[0], B[0]);
 
     cudaFree(d_B);
+    cudaFree(d_Sum);
 
     delete[] A;
     delete[] B;
+    delete[] cpuSum;
+    delete[] gpuSum;
     
     return 0;
 }
