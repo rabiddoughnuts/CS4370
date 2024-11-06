@@ -142,7 +142,6 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
     scan_array[threadID] = x[start + threadID];
     scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
 
-    // scan_array[threadID] = (i < Width) ? x[i] : 0;
     __syncthreads();
 
     // Reduction step pseudo code
