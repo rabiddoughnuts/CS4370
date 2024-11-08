@@ -34,8 +34,8 @@ int main(){
 
     init_matrix(A, B, Width);
 
-    print_matrix(A, "Matrix A");
-    print_matrix(B, "Matrix B");
+    print_matrix(A, Width, "Matrix A");
+    print_matrix(B, Width, "Matrix B");
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
@@ -56,7 +56,7 @@ int main(){
 
     dim3 dimBlock(block_size);
     dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
-    int num_blocks = dimGrid.x;
+    int numBlocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
@@ -91,8 +91,8 @@ int main(){
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
 
-    print_matrix(A, "Output array from CPU");
-    print_matrix(B, "Output array from GPU");
+    print_matrix(A, Width, "Output array from CPU");
+    print_matrix(B, Width, "Output array from GPU");
 
     cout << "Array size: " << Width << endl;
     cout << "Block size: " << block_size << endl;
