@@ -74,7 +74,8 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    size_t shared_mem_size = 2 * block_size * sizeof(int);
+    size_t shared_mem_size = block_size * sizeof(int);
+    //size_t shared_mem_size = 2 * block_size * sizeof(int);
 
     ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
     // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
@@ -156,16 +157,16 @@ __global__ void ParPrefixKernel(int* x, int* y, int Width){
 
     unsigned int threadID = threadIdx.x;
     unsigned int start = 2 * blockIdx.x * blockDim.x;
-    scan_array[threadID] = x[start + threadID];
-    scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
-    // if (start + threadID < Width)
-    //     scan_array[threadID] = x[start + threadID];
-    // else
-    //     scan_array[threadID] = 0;
-    // if (start + blockDim.x + threadID < Width)
-    //     scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
-    // else
-    //     scan_array[blockDim.x + threadID] = 0;
+    // scan_array[threadID] = x[start + threadID];
+    // scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
+    if (start + threadID < Width)
+        scan_array[threadID] = x[start + threadID];
+    else
+        scan_array[threadID] = 0;
+    if (start + blockDim.x + threadID < Width)
+        scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
+    else
+        scan_array[blockDim.x + threadID] = 0;
 
     __syncthreads();
 
