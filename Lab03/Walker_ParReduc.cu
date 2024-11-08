@@ -2,7 +2,7 @@
 // CS4370
 // Parallel Programming Many-Core GPUs
 // Meilin Liu
-// 4-Nov-2024
+// 8-Nov-2024
 // Sum Reduction
 
 #include <iostream>
@@ -15,7 +15,7 @@ void init_matrix(int *A, int *B, int N);
 void SumReduction(int* x, int N);
 __global__ void SumReductionKernel(int* x, int N);
 void compare_matrices(int cpu_result, int gpu_result);
-void print_matrix(int *matrix, const char *name);
+void print_matrix(int *matrix, int Width, const char *name);
 
 int main(){
     int Width, block_size;
@@ -43,7 +43,6 @@ int main(){
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
-    cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
 
     int *d_B;
     cudaMalloc(&d_B, Width * sizeof(int));
@@ -56,9 +55,8 @@ int main(){
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
-    dim3 dimGrid((Width + block_size - 1) / block_size);
-
-    cout << "Number of thread blocks initiated: " << dimGrid.x << endl;
+    dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
+    int num_blocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
@@ -66,28 +64,41 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    size_t shared_mem_size = block_size * sizeof(int);
+    size_t shared_mem_size = 2 * block_size * sizeof(int);
 
-    while(dimGrid.x > 1){
-        SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
+    SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
+    cudaDeviceSynchronize();
+
+    int num_blocks = dimGrid.x;
+    while (num_blocks > 1) {
+        dim3 new_dimGrid((num_blocks + 2 * block_size - 1) / (2 * block_size));
+        SumReductionKernel<<<new_dimGrid, dimBlock, shared_mem_size>>>(d_B, num_blocks);
         cudaDeviceSynchronize();
-        Width = dimGrid.x;
-        dimGrid.x = (Width + dimBlock.x - 1) / dimBlock.x;
+        num_blocks = new_dimGrid.x;
     }
 
-    SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
-    
+    // SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
+    // cudaDeviceSynchronize();
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
-    cudaMemcpy(B, d_B, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
     cudaEventRecord(transfer_stop);
     cudaEventSynchronize(transfer_stop);
 
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
+
+    print_matrix(A, "Output array from CPU");
+    print_matrix(B, "Output array from GPU");
+
+    cout << "Array size: " << Width << endl;
+    cout << "Block size: " << block_size << endl;
+    cout << "Number of thread blocks initiated: " << numBlocks << endl;
+
+    cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
     float mem_transfer = 0;
@@ -95,10 +106,10 @@ int main(){
 
     cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
 
-    cout << A[0] << " : Matrix A (CPU)" << endl;
-    cout << B[0] << " : Matrix B (GPU)" << endl;
+    cout << A << " : Matrix A (CPU)" << endl;
+    cout << B << " : Matrix B (GPU)" << endl;
 
-    compare_matrices(A[0], B[0]);
+    compare_matrices(A, B);
 
     cudaFree(d_B);
 
@@ -130,6 +141,9 @@ __global__ void SumReductionKernel(int* x, int Width){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
     sdata[threadID] = (i < Width) ? x[i] : 0;
+    if (i + blockDim.x < Width){
+        sdata[threadID] += x[i + blockDim.x];
+    }
     __syncthreads();
 
     for(int half = blockDim.x / 2; half > 0; half /=2){
@@ -144,18 +158,20 @@ __global__ void SumReductionKernel(int* x, int Width){
     }
 }
 
-void compare_matrices(int cpu_result, int gpu_result){
-    if(cpu_result != gpu_result){
-        cout << "Sums are not equal" << endl;
-        return;
+void compare_matrices(int* cpu_result, int* gpu_result, int Width){
+    for (int i = 0; i < Width; i++) {
+        if(cpu_result[i] != gpu_result[i]){
+            cout << "Sums are not equal at index " << i << endl;
+            return;
+        }
     }
     cout << "Sums are equal" << endl;
 }
 
-void print_matrix(int *matrix, const char *name){
+void print_matrix(int *matrix, int Width, const char *name){
     cout << name << ":" << endl;
-    for(int i = 0; i < 25; i++){
-        cout << matrix[i] << ", ";
+    for(int i = 0; i < min(20, Width); i++){
+        cout << matrix[i] << " ";
     }
     cout << endl;
 }

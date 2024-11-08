@@ -2,7 +2,7 @@
 // CS4370
 // Parallel Programming Many-Core GPUs
 // Meilin Liu
-// 4-Nov-2024
+// 8-Nov-2024
 // Parallel Prefix Sum
 
 #include <iostream>
@@ -13,9 +13,10 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int Width);
 void ParPrefix(int* x, int* y, int Width);
-__global__ void ParPrefixKernel(int* x,int* y, int Width);
+__global__ void ParPrefixKernel(int* x,int* y, int* sum, int Width);
+__global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width);
 void compare_matrices(int cpu_result, int gpu_result);
-void print_matrix(int *matrix, const char *name);
+void print_matrix(int *matrix, int Width, const char *name);
 
 int main(){
     int Width, block_size;
@@ -45,12 +46,13 @@ int main(){
 
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
-    cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
 
     int* d_B;
     int* d_Sum;
+    int* d_blockSums;
     cudaMalloc(&d_B, Width * sizeof(int));
     cudaMalloc(&d_Sum, Width * sizeof(int));
+    cudaMalloc(&d_blockSums, ((Width + 2 * block_size - 1) / (2 * block_size)) * sizeof(int));
 
     cudaEvent_t transfer_start, transfer_stop;
     cudaEventCreate(&transfer_start);
@@ -58,12 +60,11 @@ int main(){
 
     cudaEventRecord(transfer_start);
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
-    dim3 dimGrid((Width + block_size - 1) / block_size);
-
-    cout << "Number of thread blocks initiated: " << dimGrid.x << endl;
+    dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
+    int num_blocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
@@ -73,21 +74,23 @@ int main(){
 
     size_t shared_mem_size = 2 * block_size * sizeof(int);
 
-    ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
+    ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
 
-    // while(dimGrid.x > 1){
-    //     SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
-    //     cudaDeviceSynchronize();
-    //     Width = dimGrid.x;
-    //     dimGrid.x = (Width + dimBlock.x - 1) / dimBlock.x;
-    // }
+        // Perform scan on block sums
+    if (dimGrid.x > 1) {
+        int* d_blockSumsScan;
+        cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
+        ParPrefixKernel<<<1, dimBlock, shared_mem_size>>>(d_blockSums, d_blockSumsScan, nullptr, dimGrid.x);
+        cudaMemcpy(d_blockSums, d_blockSumsScan, dimGrid.x * sizeof(int), cudaMemcpyDeviceToDevice);
+        cudaFree(d_blockSumsScan);
+    }
 
-    // SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
+    AddScannedBlockSums<<<dimGrid, dimBlock>>>(d_B, d_Sum, d_blockSums, Width);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
-    cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(gpuSum, d_Sum, Width * sizeof(int), cudaMemcpyDeviceToHost);
 
     cudaEventRecord(transfer_stop);
@@ -96,6 +99,14 @@ int main(){
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
+    print_matrix(cpuSum, Width, "CPU Sum");
+    print_matrix(gpuSum, Width, "GPU Sum");
+
+    cout << "Array size: " << Width << endl;
+    cout << "Thread block size: " << block_size << endl;
+    cout << "Number of thread blocks initiated: " << num_blocks << endl;
+
+    cout << "CPU time: " << duration_cpu.count() << " ms" << endl;
     cout << "GPU time: " << milliseconds << " ms" << endl;
 
     float mem_transfer = 0;
@@ -103,13 +114,14 @@ int main(){
 
     cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
 
-    cout << A[0] << " : Matrix A (CPU)" << endl;
-    cout << B[0] << " : Matrix B (GPU)" << endl;
+    // cout << A[0] << " : Matrix A (CPU)" << endl;
+    // cout << B[0] << " : Matrix B (GPU)" << endl;
 
-    compare_matrices(A[0], B[0]);
+    compare_matrices(A[Width - 1], B[Width - 1]);
 
     cudaFree(d_B);
     cudaFree(d_Sum);
+    cudaFree(d_blockSums);
 
     delete[] A;
     delete[] B;
@@ -136,15 +148,19 @@ void ParPrefix(int* x, int* y, int Width){
 }
 
 // Parallel Prefix Sum Kernel for CUDA
-__global__ void ParPrefixKernel(int* x,int* y, int Width){
+__global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
    extern __shared__ int scan_array[];
 
     unsigned int threadID = threadIdx.x;
     unsigned int start = 2 * blockIdx.x * blockDim.x;
     if (start + threadID < Width)
         scan_array[threadID] = x[start + threadID];
+    else
+        scan_array[threadID] = 0;
     if (start + blockDim.x + threadID < Width)
         scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
+    else
+        scan_array[blockDim.x + threadID] = 0;
 
     __syncthreads();
 
@@ -177,23 +193,40 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
     __syncthreads();
 
     if (start + threadID < Width)
-        x[start + threadID] = scan_array[threadID];
+        y[start + threadID] = scan_array[threadID];
     if (start + blockDim.x + threadID < Width)
-        x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
+        y[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
+
+    if (sum != nullptr && threadID == 0)
+        sum[blockIdx.x] = scan_array[2 * blockDim.x - 1];
 }
 
-void compare_matrices(int cpu_result, int gpu_result){
-    if(cpu_result != gpu_result){
-        cout << "Sums are not equal" << endl;
-        return;
+// Kernel to add scanned block sums to each element
+__global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width) {
+    unsigned int start = 2 * blockIdx.x * blockDim.x;
+    unsigned int threadID = threadIdx.x;
+    if (blockIdx.x > 0) {
+        if (start + threadID < Width)
+            y[start + threadID] += sum[blockIdx.x - 1];
+        if (start + blockDim.x + threadID < Width)
+            y[start + blockDim.x + threadID] += sum[blockIdx.x - 1];
+    }
+}
+
+void compare_matrices(int* cpu_result, int* gpu_result, int Width){
+    for (int i = 0; i < Width; i++) {
+        if(cpu_result[i] != gpu_result[i]){
+            cout << "Sums are not equal at index " << i << endl;
+            return;
+        }
     }
     cout << "Sums are equal" << endl;
 }
 
-void print_matrix(int *matrix, const char *name){
+void print_matrix(int *matrix, int Width, const char *name){
     cout << name << ":" << endl;
-    for(int i = 0; i < 25; i++){
-        cout << matrix[i] << ", ";
+    for(int i = 0; i < min(20, Width); i++){
+        cout << matrix[i] << " ";
     }
     cout << endl;
 }
