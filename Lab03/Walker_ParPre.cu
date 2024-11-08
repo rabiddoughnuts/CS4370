@@ -80,7 +80,7 @@ int main(){
     // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
     ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
 
-    Perform scan on block sums
+    // Perform scan on block sums
     if (dimGrid.x > 1) {
         int* d_blockSumsScan;
         cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
