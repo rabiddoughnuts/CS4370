@@ -187,7 +187,7 @@ int calculateNumLevels(int size) {
     int level = 1;
     int elements = 2048;
     while (elements < size) {
-        elements *= 2048;
+        elements += 2048;
         level++;
     }
     return level;
