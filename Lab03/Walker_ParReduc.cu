@@ -11,8 +11,8 @@
 
 using namespace std;
 
-void init_matrix(int *A, int *B, int N);
-void SumReduction(int* x, int N);
+void init_matrix(int *A, int *B, int Width);
+void SumReduction(int* x, int Width);
 __global__ void SumReductionKernel(int* x, int Width);
 void compare_matrices(int* cpu_result, int* gpu_result, int Width);
 void print_matrix(int *matrix, int Width, const char *name);
