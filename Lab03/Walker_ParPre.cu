@@ -117,7 +117,7 @@ int main(){
 
     cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
 
-    compare_matrices(A, B, Width);
+    compare_matrices(cpuSum, gpuSum, Width);
 
     cudaFree(d_B);
     cudaFree(d_Sum);
