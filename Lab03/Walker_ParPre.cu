@@ -209,7 +209,7 @@ __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
         sum[blockIdx.x] = scan_array[2 * blockDim.x - 1];
 }
 
-Kernel to add scanned block sums to each element
+// Kernel to add scanned block sums to each element
 __global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width) {
     unsigned int start = 2 * blockIdx.x * blockDim.x;
     unsigned int threadID = threadIdx.x;
