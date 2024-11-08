@@ -15,8 +15,8 @@ void init_matrix(int *A, int *B, int Width);
 void ParPrefix(int* x, int* y, int Width);
 __global__ void ParPrefixKernel(int* x,int* y, int* sum, int Width);
 __global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width);
-void compare_matrices(int cpu_result, int gpu_result);
-void print_matrix(int *matrix, int Width, const char *name);
+void compare_matrices(int* cpu_result, int* gpu_result, int Width);
+void print_matrix(int* matrix, int Width, const char *name);
 
 int main(){
     int Width, block_size;
