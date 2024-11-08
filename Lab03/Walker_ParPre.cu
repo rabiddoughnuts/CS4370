@@ -61,7 +61,6 @@ int main(){
 
     cudaEventRecord(transfer_start);
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
     // dim3 dimGrid((Width + block_size - 1) / block_size);
@@ -79,12 +78,14 @@ int main(){
 
     // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
     ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
+    cudaDeviceSynchronize();
 
     // Perform scan on block sums
     if (dimGrid.x > 1) {
         int* d_blockSumsScan;
         cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
         ParPrefixKernel<<<1, dimBlock, shared_mem_size>>>(d_blockSums, d_blockSumsScan, nullptr, dimGrid.x);
+        cudaDeviceSynchronize();
         cudaMemcpy(d_blockSums, d_blockSumsScan, dimGrid.x * sizeof(int), cudaMemcpyDeviceToDevice);
         cudaFree(d_blockSumsScan);
     }
@@ -198,8 +199,8 @@ __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
 
     __syncthreads();
 
-    x[start + threadID] = scan_array[threadID];
-    x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
+    // x[start + threadID] = scan_array[threadID];
+    // x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
     if (start + threadID < Width)
         y[start + threadID] = scan_array[threadID];
     if (start + blockDim.x + threadID < Width)
