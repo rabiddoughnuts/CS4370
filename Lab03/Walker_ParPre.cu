@@ -37,8 +37,8 @@ int main(){
 
     init_matrix(A, B, Width);
 
-    print_matrix(A, "Matrix A");
-    print_matrix(B, "Matrix B");
+    print_matrix(A, Width, "Matrix A");
+    print_matrix(B, Width, "Matrix B");
 
     auto start_cpu = chrono::high_resolution_clock::now();
 
