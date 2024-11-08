@@ -77,9 +77,6 @@ int main(){
         num_blocks = new_dimGrid.x;
     }
 
-    // SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
-    // cudaDeviceSynchronize();
-
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
@@ -105,9 +102,6 @@ int main(){
     cudaEventElapsedTime(&mem_transfer, transfer_start, transfer_stop);
 
     cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
-
-    cout << A << " : Matrix A (CPU)" << endl;
-    cout << B << " : Matrix B (GPU)" << endl;
 
     compare_matrices(A, B, Width);
 
