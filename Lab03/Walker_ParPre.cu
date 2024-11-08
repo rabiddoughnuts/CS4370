@@ -13,9 +13,9 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int Width);
 void ParPrefix(int* x, int* y, int Width);
-__global__ void ParPrefixKernel(int* x, int* y, int Width);
-// __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width);
-// __global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width);
+// __global__ void ParPrefixKernel(int* x, int* y, int Width);
+__global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width);
+__global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width);
 void compare_matrices(int* cpu_result, int* gpu_result, int Width);
 void print_matrix(int* matrix, int Width, const char *name);
 
@@ -50,10 +50,10 @@ int main(){
 
     int* d_B;
     int* d_Sum;
-    //int* d_blockSums;
+    int* d_blockSums;
     cudaMalloc(&d_B, Width * sizeof(int));
     cudaMalloc(&d_Sum, Width * sizeof(int));
-    //cudaMalloc(&d_blockSums, ((Width + 2 * block_size - 1) / (2 * block_size)) * sizeof(int));
+    cudaMalloc(&d_blockSums, ((Width + 2 * block_size - 1) / (2 * block_size)) * sizeof(int));
 
     cudaEvent_t transfer_start, transfer_stop;
     cudaEventCreate(&transfer_start);
@@ -64,8 +64,8 @@ int main(){
     // cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
-    dim3 dimGrid((Width + block_size - 1) / block_size);
-    //dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
+    // dim3 dimGrid((Width + block_size - 1) / block_size);
+    dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
     int num_blocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
@@ -74,27 +74,27 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    size_t shared_mem_size = block_size * sizeof(int);
-    //size_t shared_mem_size = 2 * block_size * sizeof(int);
+    // size_t shared_mem_size = block_size * sizeof(int);
+    size_t shared_mem_size = 2 * block_size * sizeof(int);
 
-    ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
-    // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
+    // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
+    ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
 
-    // Perform scan on block sums
-    // if (dimGrid.x > 1) {
-    //     int* d_blockSumsScan;
-    //     cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
-    //     ParPrefixKernel<<<1, dimBlock, shared_mem_size>>>(d_blockSums, d_blockSumsScan, nullptr, dimGrid.x);
-    //     cudaMemcpy(d_blockSums, d_blockSumsScan, dimGrid.x * sizeof(int), cudaMemcpyDeviceToDevice);
-    //     cudaFree(d_blockSumsScan);
-    // }
+    Perform scan on block sums
+    if (dimGrid.x > 1) {
+        int* d_blockSumsScan;
+        cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
+        ParPrefixKernel<<<1, dimBlock, shared_mem_size>>>(d_blockSums, d_blockSumsScan, nullptr, dimGrid.x);
+        cudaMemcpy(d_blockSums, d_blockSumsScan, dimGrid.x * sizeof(int), cudaMemcpyDeviceToDevice);
+        cudaFree(d_blockSumsScan);
+    }
 
-    // AddScannedBlockSums<<<dimGrid, dimBlock>>>(d_B, d_Sum, d_blockSums, Width);
+    AddScannedBlockSums<<<dimGrid, dimBlock>>>(d_B, d_Sum, d_blockSums, Width);
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
-    //cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(gpuSum, d_Sum, Width * sizeof(int), cudaMemcpyDeviceToHost);
 
     cudaEventRecord(transfer_stop);
@@ -125,7 +125,7 @@ int main(){
 
     cudaFree(d_B);
     cudaFree(d_Sum);
-    //cudaFree(d_blockSums);
+    cudaFree(d_blockSums);
 
     delete[] A;
     delete[] B;
@@ -200,13 +200,13 @@ __global__ void ParPrefixKernel(int* x, int* y, int Width){
 
     x[start + threadID] = scan_array[threadID];
     x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
-    // if (start + threadID < Width)
-    //     y[start + threadID] = scan_array[threadID];
-    // if (start + blockDim.x + threadID < Width)
-    //     y[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
+    if (start + threadID < Width)
+        y[start + threadID] = scan_array[threadID];
+    if (start + blockDim.x + threadID < Width)
+        y[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
 
-    // if (sum != nullptr && threadID == 0)
-    //     sum[blockIdx.x] = scan_array[2 * blockDim.x - 1];
+    if (sum != nullptr && threadID == 0)
+        sum[blockIdx.x] = scan_array[2 * blockDim.x - 1];
 }
 
 // Kernel to add scanned block sums to each element
