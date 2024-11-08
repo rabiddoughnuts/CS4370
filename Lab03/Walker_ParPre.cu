@@ -152,7 +152,7 @@ void ParPrefix(int* x, int* y, int Width){
 }
 
 // Parallel Prefix Sum Kernel for CUDA
-__global__ void ParPrefixKernel(int* x, int* y, int Width){
+__global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
    extern __shared__ int scan_array[];
 
     unsigned int threadID = threadIdx.x;
@@ -209,17 +209,17 @@ __global__ void ParPrefixKernel(int* x, int* y, int Width){
         sum[blockIdx.x] = scan_array[2 * blockDim.x - 1];
 }
 
-// Kernel to add scanned block sums to each element
-// __global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width) {
-//     unsigned int start = 2 * blockIdx.x * blockDim.x;
-//     unsigned int threadID = threadIdx.x;
-//     if (blockIdx.x > 0) {
-//         if (start + threadID < Width)
-//             y[start + threadID] += sum[blockIdx.x - 1];
-//         if (start + blockDim.x + threadID < Width)
-//             y[start + blockDim.x + threadID] += sum[blockIdx.x - 1];
-//     }
-// }
+Kernel to add scanned block sums to each element
+__global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width) {
+    unsigned int start = 2 * blockIdx.x * blockDim.x;
+    unsigned int threadID = threadIdx.x;
+    if (blockIdx.x > 0) {
+        if (start + threadID < Width)
+            y[start + threadID] += sum[blockIdx.x - 1];
+        if (start + blockDim.x + threadID < Width)
+            y[start + blockDim.x + threadID] += sum[blockIdx.x - 1];
+    }
+}
 
 void compare_matrices(int* cpu_result, int* gpu_result, int Width){
     for (int i = 0; i < Width; i++) {
