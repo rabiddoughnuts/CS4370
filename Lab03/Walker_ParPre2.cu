@@ -49,6 +49,7 @@ int main(){
     auto end_cpu = chrono::high_resolution_clock::now();
     chrono::duration<float, milli> duration_cpu = end_cpu - start_cpu;
 
+    const int MAX_BLOCK_SIZE = 2048;
     int numLevels = calculateNumLevels(Width);
     int** d_levelSums = new int*[numLevels];
     int* levelSizes = new int[numLevels];
@@ -79,7 +80,7 @@ int main(){
     dim3 dimBlock(block_size);
     // dim3 dimGrid((Width + block_size - 1) / block_size);
     dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
-    // int num_blocks = dimGrid.x;
+    int num_blocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
