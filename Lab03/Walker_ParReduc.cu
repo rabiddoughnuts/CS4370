@@ -64,18 +64,25 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    size_t shared_mem_size = 2 * block_size * sizeof(int);
+    size_t shared_mem_size = block_size * sizeof(int);
 
-    SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
-    cudaDeviceSynchronize();
-
-    int num_blocks = dimGrid.x;
-    while (num_blocks > 1) {
-        dim3 new_dimGrid((num_blocks + 2 * block_size - 1) / (2 * block_size));
-        SumReductionKernel<<<new_dimGrid, dimBlock, shared_mem_size>>>(d_B, num_blocks);
+    while(dimGrid.x > 1){
+        SumReductionKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, Width);
         cudaDeviceSynchronize();
-        num_blocks = new_dimGrid.x;
+        Width = dimGrid.x;
+        dimGrid.x = (Width + blockBlock.x - 1) / dimBlock.x;
     }
+
+    SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
+    // cudaDeviceSynchronize();
+
+    //int num_blocks = dimGrid.x;
+    // while (num_blocks > 1) {
+    //     dim3 new_dimGrid((num_blocks + 2 * block_size - 1) / (2 * block_size));
+    //     SumReductionKernel<<<new_dimGrid, dimBlock, shared_mem_size>>>(d_B, num_blocks);
+    //     cudaDeviceSynchronize();
+    //     num_blocks = new_dimGrid.x;
+    // }
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -135,9 +142,9 @@ __global__ void SumReductionKernel(int* x, int Width){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
     sdata[threadID] = (i < Width) ? x[i] : 0;
-    if (i + blockDim.x < Width){
-        sdata[threadID] += x[i + blockDim.x];
-    }
+    // if (i + blockDim.x < Width){
+    //     sdata[threadID] += x[i + blockDim.x];
+    // }
     __syncthreads();
 
     for(int half = blockDim.x / 2; half > 0; half /=2){
