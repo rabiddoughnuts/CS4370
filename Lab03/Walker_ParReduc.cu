@@ -14,7 +14,7 @@ using namespace std;
 void init_matrix(int *A, int *B, int Width);
 void SumReduction(int* x, int Width);
 __global__ void SumReductionKernel(int* x, int Width);
-void compare_matrices(int* cpu_result, int* gpu_result, int Width);
+void compare_matrices(int cpu_result, int gpu_result);
 void print_matrix(int *matrix, int Width, const char *name);
 
 int main(){
@@ -56,7 +56,6 @@ int main(){
 
     dim3 dimBlock(block_size);
     dim3 dimGrid((Width + block_size - 1) / block_size);
-    // dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
     int numBlocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
@@ -75,15 +74,6 @@ int main(){
     }
 
     SumReductionKernel<<<1, dimBlock, shared_mem_size>>>(d_B, Width);
-    // cudaDeviceSynchronize();
-
-    //int num_blocks = dimGrid.x;
-    // while (num_blocks > 1) {
-    //     dim3 new_dimGrid((num_blocks + 2 * block_size - 1) / (2 * block_size));
-    //     SumReductionKernel<<<new_dimGrid, dimBlock, shared_mem_size>>>(d_B, num_blocks);
-    //     cudaDeviceSynchronize();
-    //     num_blocks = new_dimGrid.x;
-    // }
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -111,7 +101,7 @@ int main(){
 
     cout << "Transfer time: " << mem_transfer - milliseconds << " ms" << endl;
 
-    compare_matrices(A, B, Width);
+    compare_matrices(A[0], B[0]);
 
     cudaFree(d_B);
 
@@ -160,12 +150,9 @@ __global__ void SumReductionKernel(int* x, int Width){
     }
 }
 
-void compare_matrices(int* cpu_result, int* gpu_result, int Width){
-    for (int i = 0; i < Width; i++) {
-        if(cpu_result[i] != gpu_result[i]){
-            cout << "Sums are not equal at index " << i << endl;
-            return;
-        }
+void compare_matrices(int cpu_result, int gpu_result){
+    if(cpu_result != gpu_result){
+        cout << "Sums are not equal" << endl;
     }
     cout << "Sums are equal" << endl;
 }
