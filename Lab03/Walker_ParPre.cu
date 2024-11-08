@@ -63,6 +63,8 @@ int main(){
     dim3 dimBlock(block_size);
     dim3 dimGrid((Width + block_size - 1) / block_size);
 
+    cout << "Number of thread blocks initiated: " << dimGrid.x << endl;
+
     cudaEvent_t start_gpu, stop_gpu;
     cudaEventCreate(&start_gpu);
     cudaEventCreate(&stop_gpu);
