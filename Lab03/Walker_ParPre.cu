@@ -99,8 +99,11 @@ int main(){
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start_gpu, stop_gpu);
 
-    print_matrix(cpuSum, Width, "CPU Sum");
-    print_matrix(gpuSum, Width, "GPU Sum");
+    print_matrix(cpuSum, Width, "CPU output matrix");
+    print_matrix(gpuSum, Width, "GPU output matrix");
+
+    cout << cpuSum[Width - 1] << ": CPU sum." << endl;
+    cout << gpuSum[Width - 1] << ": GPU sum." << endl;
 
     cout << "Array size: " << Width << endl;
     cout << "Thread block size: " << block_size << endl;
