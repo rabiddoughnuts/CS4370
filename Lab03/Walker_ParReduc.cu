@@ -13,8 +13,8 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int N);
 void SumReduction(int* x, int N);
-__global__ void SumReductionKernel(int* x, int N);
-void compare_matrices(int cpu_result, int gpu_result);
+__global__ void SumReductionKernel(int* x, int Width);
+void compare_matrices(int* cpu_result, int* gpu_result, int Width);
 void print_matrix(int *matrix, int Width, const char *name);
 
 int main(){
@@ -109,7 +109,7 @@ int main(){
     cout << A << " : Matrix A (CPU)" << endl;
     cout << B << " : Matrix B (GPU)" << endl;
 
-    compare_matrices(A, B);
+    compare_matrices(A, B, Width);
 
     cudaFree(d_B);
 
