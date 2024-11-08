@@ -117,7 +117,7 @@ int main(){
     // cout << A[0] << " : Matrix A (CPU)" << endl;
     // cout << B[0] << " : Matrix B (GPU)" << endl;
 
-    compare_matrices(A[], B[], Width);
+    compare_matrices(A, B, Width);
 
     cudaFree(d_B);
     cudaFree(d_Sum);
