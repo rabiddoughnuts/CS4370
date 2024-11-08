@@ -58,7 +58,7 @@ int main(){
 
     cudaEventRecord(transfer_start);
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpuHostToDevice);
+    cudaMemcpy(d_Sum, gpuSum, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
     dim3 dimGrid((Width + block_size - 1) / block_size);
@@ -170,7 +170,7 @@ __global__ void ParPrefixKernel(int* x,int* y, int Width){
         __syncthreads();
     }
 
-    __synchthreads();
+    __syncthreads();
 
     x[start + threadID] = scan_array[threadID];
     x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
