@@ -137,7 +137,7 @@ void ParPrefix(int* x, int* y, int Width){
 
 // Parallel Prefix Sum Kernel for CUDA
 __global__ void ParPrefixKernel(int* x,int* y, int Width){
-   extern __shared__ int scan_array[2 * blockDim.x];
+   extern __shared__ int scan_array[];
 
     unsigned int threadID = threadIdx.x;
     unsigned int start = 2 * blockIdx.x * blockDim.x;
