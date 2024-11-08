@@ -55,7 +55,8 @@ int main(){
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
-    dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
+    dim3 dimGrid((Width + block_size - 1) / block_size);
+    // dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
     int numBlocks = dimGrid.x;
 
     cudaEvent_t start_gpu, stop_gpu;
