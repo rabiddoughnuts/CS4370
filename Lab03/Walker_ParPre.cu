@@ -13,7 +13,6 @@ using namespace std;
 
 void init_matrix(int *A, int *B, int Width);
 void ParPrefix(int* x, int* y, int Width);
-// __global__ void ParPrefixKernel(int* x, int* y, int Width);
 __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width);
 __global__ void AddScannedBlockSums(int* x, int* y, int* sum, int Width);
 void compare_matrices(int* cpu_result, int* gpu_result, int Width);
@@ -63,7 +62,6 @@ int main(){
     cudaMemcpy(d_B, B, Width * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 dimBlock(block_size);
-    // dim3 dimGrid((Width + block_size - 1) / block_size);
     dim3 dimGrid((Width + 2 * block_size - 1) / (2 * block_size));
     int num_blocks = dimGrid.x;
 
@@ -73,10 +71,8 @@ int main(){
 
     cudaEventRecord(start_gpu);
 
-    // size_t shared_mem_size = block_size * sizeof(int);
     size_t shared_mem_size = 2 * block_size * sizeof(int);
 
-    // ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, Width);
     ParPrefixKernel<<<dimGrid, dimBlock, shared_mem_size>>>(d_B, d_Sum, d_blockSums, Width);
     cudaDeviceSynchronize();
 
@@ -95,7 +91,6 @@ int main(){
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
 
-    // cudaMemcpy(B, d_B, Width * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(gpuSum, d_Sum, Width * sizeof(int), cudaMemcpyDeviceToHost);
 
     cudaEventRecord(transfer_stop);
@@ -158,8 +153,6 @@ __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
 
     unsigned int threadID = threadIdx.x;
     unsigned int start = 2 * blockIdx.x * blockDim.x;
-    // scan_array[threadID] = x[start + threadID];
-    // scan_array[blockDim.x + threadID] = x[start + blockDim.x + threadID];
     if (start + threadID < Width)
         scan_array[threadID] = x[start + threadID];
     else
@@ -199,8 +192,6 @@ __global__ void ParPrefixKernel(int* x, int* y, int* sum, int Width){
 
     __syncthreads();
 
-    // x[start + threadID] = scan_array[threadID];
-    // x[start + blockDim.x + threadID] = scan_array[blockDim.x + threadID];
     if (start + threadID < Width)
         y[start + threadID] = scan_array[threadID];
     if (start + blockDim.x + threadID < Width)
