@@ -130,7 +130,8 @@ int main(){
     //     cudaFree(d_blockSumsScan);
     // }
 
-    AddScannedBlockSums<<<dimGrid, dimBlock>>>(d_B, d_Sum, d_blockSums, Width);
+    AddScannedBlockSums<<<dimGrid, dimBlock>>>(d_B, d_Sum, d_levelSums[0], Width);
+    cudaDeviceSynchronize();
 
     cudaEventRecord(stop_gpu);
     cudaEventSynchronize(stop_gpu);
@@ -187,7 +188,7 @@ int calculateNumLevels(int size) {
     int level = 1;
     int elements = 2048;
     while (elements < size) {
-        elements += 2048;
+        elements *= 2048;
         level++;
     }
     return level;
