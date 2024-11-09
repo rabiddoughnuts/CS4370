@@ -81,7 +81,7 @@ int main(){
     cudaDeviceSynchronize();
 
     // Perform scan on block sums
-    if (dimGrid.x > 1) {
+    while (dimGrid.x > 1) {
         int* d_blockSumsScan;
         cudaMalloc(&d_blockSumsScan, dimGrid.x * sizeof(int));
         ParPrefixKernel<<<1, dimBlock, shared_mem_size>>>(d_blockSums, d_blockSumsScan, nullptr, dimGrid.x);
