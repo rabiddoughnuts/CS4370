@@ -16,7 +16,8 @@ void init_array(unsigned char* input, long size);
 void cpuHist(unsigned char* A, unsigned int* histo, long size);
 __global__ void hist_kernel(unsigned char* A, unsigned int* histo, long size);
 __global__ void histo_shared(unsigned char* A, unsigned int* histo, long size);
-void print_results(const char* label, unsigned int* histo, long size, long duration);
+void print_array(const char* label, unsigned int* histo);
+void print_timing(const char* label, float duration);
 void check_results(unsigned int* cpu, unsigned int* gpu, unsigned int* gpu_shared);
 
 int main(){
@@ -47,11 +48,10 @@ int main(){
     cout << endl;
 
     // CPU computation
-    auto start = high_resolution_clock::now();
+    auto start_cpu = high_resolution_clock::now();
     cpuHist(input, cpu, size);
-    auto end = high_resolution_clock::now();
-    auto cpu_duration = duration_cast<milliseconds>(end - start).count();
-    print_results("CPU", cpu, size, cpu_duration);
+    auto end_cpu = high_resolution_clock::now();
+    duration<float, milli> duration_cpu = end_cpu - start_cpu;
 
     // GPU computation with global memory
     cudaMemcpy(d_input, input, size * sizeof(unsigned char), cudaMemcpyHostToDevice);
@@ -60,27 +60,57 @@ int main(){
     int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    cout << "Thread block size: " << threadsPerBlock << endl;
-    cout << "Number of thread blocks: " << blocksPerGrid << endl;
+    cudaEvent_t start_gpu, stop_gpu;
+    cudaEventCreate(&start_gpu);
+    cudaEventCreate(&stop_gpu);
 
-    start = high_resolution_clock::now();
+    cudaEventRecord(start_gpu);
     hist_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_histo, size);
-    cudaDeviceSynchronize();
-    end = high_resolution_clock::now();
-    auto gpu_duration = duration_cast<milliseconds>(end - start).count();
+    cudaEventRecord(stop_gpu);
+    cudaEventSynchronize(stop_gpu);
+
+    float gpu_duration = 0;
+    cudaEventElapsedTime(&gpu_duration, start_gpu, stop_gpu);
     cudaMemcpy(gpu, d_histo, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    print_results("GPU (global memory)", gpu, size, gpu_duration);
 
     // GPU computation with shared memory
     cudaMemset(d_histo, 0, 256 * sizeof(unsigned int));
 
-    start = high_resolution_clock::now();
+    cudaEventCreate(&start_gpu);
+    cudaEventCreate(&stop_gpu);
+
+    cudaEventRecord(start_gpu);
     histo_shared<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_histo, size);
-    cudaDeviceSynchronize();
-    end = high_resolution_clock::now();
-    auto gpu_shared_duration = duration_cast<milliseconds>(end - start).count();
+    cudaEventRecord(stop_gpu);
+    cudaEventSynchronize(stop_gpu);
+
+    float gpu_shared_duration = 0;
+    cudaEventElapsedTime(&gpu_shared_duration, start_gpu, stop_gpu);
     cudaMemcpy(gpu_shared, d_histo, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    print_results("GPU (shared memory)", gpu_shared, size, gpu_shared_duration);
+
+    // Print results
+    cout << "First 10 elements of input array: ";
+    for (int i = 0; i < 10 && i < size; i++) {
+        cout << (int)input[i] << " ";
+    }
+    cout << endl;
+
+    cout << "First 10 elements of CPU output: ";
+    print_array("CPU", cpu);
+
+    cout << "First 10 elements of GPU output (global memory): ";
+    print_array("GPU", gpu);
+
+    cout << "First 10 elements of GPU output (shared memory): ";
+    print_array("GPU (shared memory)", gpu_shared);
+
+    print_timing("CPU computation time", duration_cpu.count());
+    print_timing("GPU computation time (global memory)", gpu_duration);
+    print_timing("GPU computation time (shared memory)", gpu_shared_duration);
+
+    cout << "Array size: " << size << endl;
+    cout << "Thread block size: " << threadsPerBlock << endl;
+    cout << "Number of thread blocks: " << blocksPerGrid << endl;
 
     // Check results
     check_results(cpu, gpu, gpu_shared);
@@ -140,13 +170,15 @@ __global__ void histo_shared(unsigned char* A, unsigned int* histo, long size){
     }
 }
 
-void print_results(const char* label, unsigned int* histo, long size, long duration) {
-    cout << label << " computation time: " << duration << " ms" << endl;
-    cout << "First 10 elements of " << label << " output: ";
+void print_array(const char* label, unsigned int* histo) {
     for (int i = 0; i < 10; i++) {
         cout << histo[i] << " ";
     }
     cout << endl;
+}
+
+void print_timing(const char* label, float duration) {
+    cout << label << ": " << duration << " ms" << endl;
 }
 
 void check_results(unsigned int* cpu, unsigned int* gpu, unsigned int* gpu_shared) {
