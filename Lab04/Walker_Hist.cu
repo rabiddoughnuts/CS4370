@@ -40,8 +40,7 @@ int main(){
 
     init_array(input, size);
 
-    // Print array size and first 10 elements of input
-    cout << "Array size: " << size << endl;
+    // Print first 10 elements of input
     cout << "First 10 elements of input array: ";
     for (int i = 0; i < 10 && i < size; i++) {
         cout << (int)input[i] << " ";
