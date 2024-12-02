@@ -54,8 +54,11 @@ int main(){
     duration<float, milli> duration_cpu = end_cpu - start_cpu;
 
     // GPU computation with global memory
+    auto start_transfer_to_gpu = high_resolution_clock::now();
     cudaMemcpy(d_input, input, size * sizeof(unsigned char), cudaMemcpyHostToDevice);
     cudaMemset(d_histo, 0, 256 * sizeof(unsigned int));
+    auto end_transfer_to_gpu = high_resolution_clock::now();
+    duration<float, milli> duration_transfer_to_gpu = end_transfer_to_gpu - start_transfer_to_gpu;
 
     int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
@@ -71,7 +74,13 @@ int main(){
 
     float gpu_duration = 0;
     cudaEventElapsedTime(&gpu_duration, start_gpu, stop_gpu);
+
+    auto start_transfer_from_gpu = high_resolution_clock::now();
     cudaMemcpy(gpu, d_histo, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    auto end_transfer_from_gpu = high_resolution_clock::now();
+    duration<float, milli> duration_transfer_from_gpu = end_transfer_from_gpu - start_transfer_from_gpu;
+
+    float total_gpu_duration = gpu_duration + duration_transfer_to_gpu.count() + duration_transfer_from_gpu.count();
 
     // GPU computation with shared memory
     cudaMemset(d_histo, 0, 256 * sizeof(unsigned int));
@@ -86,15 +95,15 @@ int main(){
 
     float gpu_shared_duration = 0;
     cudaEventElapsedTime(&gpu_shared_duration, start_gpu, stop_gpu);
+
+    start_transfer_from_gpu = high_resolution_clock::now();
     cudaMemcpy(gpu_shared, d_histo, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    end_transfer_from_gpu = high_resolution_clock::now();
+    duration_transfer_from_gpu = end_transfer_from_gpu - start_transfer_from_gpu;
+
+    float total_gpu_shared_duration = gpu_shared_duration + duration_transfer_to_gpu.count() + duration_transfer_from_gpu.count();
 
     // Print results
-    cout << "First 10 elements of input array: ";
-    for (int i = 0; i < 10 && i < size; i++) {
-        cout << (int)input[i] << " ";
-    }
-    cout << endl;
-
     cout << "First 10 elements of CPU output: ";
     print_array("CPU", cpu);
 
@@ -106,7 +115,12 @@ int main(){
 
     print_timing("CPU computation time", duration_cpu.count());
     print_timing("GPU computation time (global memory)", gpu_duration);
+    print_timing("GPU memory transfer time (to device)", duration_transfer_to_gpu.count());
+    print_timing("GPU memory transfer time (from device)", duration_transfer_from_gpu.count());
+    print_timing("Total GPU time (global memory)", total_gpu_duration);
+
     print_timing("GPU computation time (shared memory)", gpu_shared_duration);
+    print_timing("Total GPU time (shared memory)", total_gpu_shared_duration);
 
     cout << "Array size: " << size << endl;
     cout << "Thread block size: " << threadsPerBlock << endl;
