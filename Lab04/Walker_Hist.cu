@@ -18,6 +18,7 @@ __global__ void hist_kernel(unsigned char* A, unsigned int* histo, long size);
 __global__ void histo_shared(unsigned char* A, unsigned int* histo, long size);
 void print_array(const char* label, unsigned int* histo);
 void print_timing(const char* label, float duration);
+void print_memory_transfer_timing(float total, float to_device, float from_device);
 void check_results(unsigned int* cpu, unsigned int* gpu, unsigned int* gpu_shared);
 
 int main(){
@@ -115,11 +116,11 @@ int main(){
 
     print_timing("CPU computation time", duration_cpu.count());
     print_timing("GPU computation time (global memory)", gpu_duration);
-    print_timing("GPU memory transfer time (to device)", duration_transfer_to_gpu.count());
-    print_timing("GPU memory transfer time (from device)", duration_transfer_from_gpu.count());
-    print_timing("Total GPU time (global memory)", total_gpu_duration);
-
     print_timing("GPU computation time (shared memory)", gpu_shared_duration);
+
+    print_memory_transfer_timing(duration_transfer_to_gpu.count() + duration_transfer_from_gpu.count(), duration_transfer_to_gpu.count(), duration_transfer_from_gpu.count());
+
+    print_timing("Total GPU time (global memory)", total_gpu_duration);
     print_timing("Total GPU time (shared memory)", total_gpu_shared_duration);
 
     cout << "Array size: " << size << endl;
@@ -193,6 +194,10 @@ void print_array(const char* label, unsigned int* histo) {
 
 void print_timing(const char* label, float duration) {
     cout << label << ": " << duration << " ms" << endl;
+}
+
+void print_memory_transfer_timing(float total, float to_device, float from_device) {
+    cout << "Memory transfer time (total, to, from): " << total << " ms, " << to_device << " ms, " << from_device << " ms" << endl;
 }
 
 void check_results(unsigned int* cpu, unsigned int* gpu, unsigned int* gpu_shared) {
